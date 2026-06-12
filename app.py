@@ -15,13 +15,14 @@ st.markdown("""
 
 # --- 2. الدوال ---
 def check_key(hwid, key):
+    # ملاحظة: تأكد من تطابق مفتاح التشفير بين كود المولد وكود التطبيق
     return key == hashlib.sha256((hwid + "MY_SECRET_KEY").encode()).hexdigest()[:12].upper()
 
 def clean_groups(raw_input):
     urls = re.findall(r'(https?://t\.me/[+a-zA-Z0-9_]+|t\.me/[+a-zA-Z0-9_]+)', raw_input)
     return list(set(urls))
 
-# --- 3. الواجهة (نظام القفل) ---
+# --- 3. المنطق الأساسي ---
 if 'authenticated' not in st.session_state: st.session_state.authenticated = False
 hwid = hashlib.md5(st.context.headers.get("User-Agent", "").encode()).hexdigest()[:10].upper()
 
@@ -36,7 +37,7 @@ if not st.session_state.authenticated:
             st.rerun()
         else:
             st.error("مفتاح التفعيل غير صحيح!")
-            
+    
     st.markdown("""
         <a href="https://wa.me/966548607477" style="display: block; text-align: center; 
         padding: 10px; background: #ffd700; color: black; border-radius: 5px; text-decoration: none; font-weight: bold;">
@@ -45,7 +46,7 @@ if not st.session_state.authenticated:
     """, unsafe_allow_html=True)
 
 else:
-    # --- 4. لوحة التحكم (محرك النشر الذكي) ---
+    # --- 4. لوحة التحكم ---
     st.title("🚀 لوحة تحكم النشر")
     api_id = st.text_input("API ID")
     api_hash = st.text_input("API HASH", type="password")
@@ -56,21 +57,21 @@ else:
         groups = clean_groups(groups_raw)
         st.write(f"⚙️ جاري النشر في {len(groups)} مجموعة...")
         
-        async def start_publishing():
+        # تعريف دالة الـ async
+        async def run_bot():
             async with Client("my_session", api_id=int(api_id), api_hash=api_hash) as app:
                 for group in groups:
                     try:
                         await app.join_chat(group)
                         await app.send_message(group, message)
-                        st.success(f"✅ تم بنجاح: {group}")
+                        st.success(f"✅ تم النشر في: {group}")
                     except Exception as e:
-                        st.warning(f"⚠️ تخطي {group}: خطأ تقني")
-                        continue
+                        st.warning(f"⚠️ تعذر النشر في {group}")
         
-        # --- حل مشكلة Event Loop ---
+        # الحل الجذري للخطأ: إنشاء حلقة أحداث جديدة وتثبيتها
         try:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            loop.run_until_complete(start_publishing())
+            loop.run_until_complete(run_bot())
         except Exception as e:
-            st.error(f"خطأ في تشغيل المحرك: {e}")
+            st.error(f"حدث خطأ أثناء تشغيل البوت: {e}")
