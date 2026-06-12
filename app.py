@@ -2,12 +2,12 @@ import streamlit as st
 import hashlib
 import re
 import asyncio
-from pyrogram import Client
+import threading
 
-# --- الإعدادات ---
+# --- 1. الإعدادات ---
 st.set_page_config(page_title="VIP ACCESS", page_icon="👑")
 
-# --- الدوال الأساسية ---
+# --- 2. الدوال ---
 def check_key(hwid, key):
     return key == hashlib.sha256((hwid + "MY_SECRET_KEY").encode()).hexdigest()[:12].upper()
 
@@ -15,7 +15,7 @@ def clean_groups(raw_input):
     urls = re.findall(r'(https?://t\.me/[+a-zA-Z0-9_]+|t\.me/[+a-zA-Z0-9_]+)', raw_input)
     return list(set(urls))
 
-# --- واجهة القفل ---
+# --- 3. الواجهة ---
 if 'authenticated' not in st.session_state: st.session_state.authenticated = False
 hwid = hashlib.md5(st.context.headers.get("User-Agent", "").encode()).hexdigest()[:10].upper()
 
@@ -30,7 +30,6 @@ if not st.session_state.authenticated:
         else:
             st.error("مفتاح خاطئ")
 else:
-    # --- لوحة التحكم ---
     st.title("🚀 لوحة تحكم النشر")
     api_id = st.text_input("API ID")
     api_hash = st.text_input("API HASH", type="password")
@@ -38,24 +37,24 @@ else:
     message = st.text_area("الرسالة:")
     
     if st.button("بدء النشر الذكي"):
-        groups = clean_groups(groups_raw)
+        # نقوم باستيراد Client داخل الدالة لتجنب الخطأ عند بدء التطبيق
+        from pyrogram import Client
         
-        # الحل الجذري: نستخدم دالة بسيطة للتشغيل
         async def main_task():
             async with Client("my_session", api_id=int(api_id), api_hash=api_hash) as app:
+                groups = clean_groups(groups_raw)
                 for group in groups:
                     try:
                         await app.join_chat(group)
                         await app.send_message(group, message)
                         st.success(f"✅ تم: {group}")
-                    except Exception:
+                    except Exception as e:
                         st.warning(f"⚠️ تعذر: {group}")
-                        continue
-
-        # هذا الجزء هو الأهم لتجاوز الخطأ
+        
+        # إنشاء حلقة أحداث جديدة وتثبيتها لكل طلب نشر
         try:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             loop.run_until_complete(main_task())
         except Exception as e:
-            st.write(f"حدث خطأ: {e}")
+            st.error(f"خطأ في التنفيذ: {e}")
