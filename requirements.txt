@@ -1,3 +1,4 @@
+streamlit
 pyrogram
 tgcrypto
-streamlit
+nest_asyncio
