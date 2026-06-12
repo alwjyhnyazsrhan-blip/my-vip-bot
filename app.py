@@ -4,74 +4,58 @@ import re
 import asyncio
 from pyrogram import Client
 
-# --- 1. الإعدادات ---
+# --- الإعدادات ---
 st.set_page_config(page_title="VIP ACCESS", page_icon="👑")
-st.markdown("""
-    <style>
-    .stApp {background-color: #0e1117;}
-    .stButton>button {width: 100%; background-color: #00ff88; color: black; font-weight: bold;}
-    </style>
-""", unsafe_allow_html=True)
 
-# --- 2. الدوال ---
+# --- الدوال الأساسية ---
 def check_key(hwid, key):
-    # ملاحظة: تأكد من تطابق مفتاح التشفير بين كود المولد وكود التطبيق
     return key == hashlib.sha256((hwid + "MY_SECRET_KEY").encode()).hexdigest()[:12].upper()
 
 def clean_groups(raw_input):
     urls = re.findall(r'(https?://t\.me/[+a-zA-Z0-9_]+|t\.me/[+a-zA-Z0-9_]+)', raw_input)
     return list(set(urls))
 
-# --- 3. المنطق الأساسي ---
+# --- واجهة القفل ---
 if 'authenticated' not in st.session_state: st.session_state.authenticated = False
 hwid = hashlib.md5(st.context.headers.get("User-Agent", "").encode()).hexdigest()[:10].upper()
 
 if not st.session_state.authenticated:
-    st.markdown("<h1 style='text-align: center;'>👑 VIP ACCESS</h1>", unsafe_allow_html=True)
-    st.code(hwid, language=None)
-    key_input = st.text_input("🔑 أدخل مفتاح التفعيل هنا:")
-    
-    if st.button("تسجيل الدخول"):
+    st.title("👑 VIP ACCESS")
+    st.code(hwid)
+    key_input = st.text_input("🔑 مفتاح التفعيل:")
+    if st.button("دخول"):
         if check_key(hwid, key_input):
             st.session_state.authenticated = True
             st.rerun()
         else:
-            st.error("مفتاح التفعيل غير صحيح!")
-    
-    st.markdown("""
-        <a href="https://wa.me/966548607477" style="display: block; text-align: center; 
-        padding: 10px; background: #ffd700; color: black; border-radius: 5px; text-decoration: none; font-weight: bold;">
-        💎 شراء كود VIP
-        </a>
-    """, unsafe_allow_html=True)
-
+            st.error("مفتاح خاطئ")
 else:
-    # --- 4. لوحة التحكم ---
+    # --- لوحة التحكم ---
     st.title("🚀 لوحة تحكم النشر")
     api_id = st.text_input("API ID")
     api_hash = st.text_input("API HASH", type="password")
-    groups_raw = st.text_area("روابط المجموعات:")
-    message = st.text_area("نص الرسالة:")
+    groups_raw = st.text_area("الروابط:")
+    message = st.text_area("الرسالة:")
     
     if st.button("بدء النشر الذكي"):
         groups = clean_groups(groups_raw)
-        st.write(f"⚙️ جاري النشر في {len(groups)} مجموعة...")
         
-        # تعريف دالة الـ async
-        async def run_bot():
+        # الحل الجذري: نستخدم دالة بسيطة للتشغيل
+        async def main_task():
             async with Client("my_session", api_id=int(api_id), api_hash=api_hash) as app:
                 for group in groups:
                     try:
                         await app.join_chat(group)
                         await app.send_message(group, message)
-                        st.success(f"✅ تم النشر في: {group}")
-                    except Exception as e:
-                        st.warning(f"⚠️ تعذر النشر في {group}")
-        
-        # الحل الجذري للخطأ: إنشاء حلقة أحداث جديدة وتثبيتها
+                        st.success(f"✅ تم: {group}")
+                    except Exception:
+                        st.warning(f"⚠️ تعذر: {group}")
+                        continue
+
+        # هذا الجزء هو الأهم لتجاوز الخطأ
         try:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            loop.run_until_complete(run_bot())
+            loop.run_until_complete(main_task())
         except Exception as e:
-            st.error(f"حدث خطأ أثناء تشغيل البوت: {e}")
+            st.write(f"حدث خطأ: {e}")
