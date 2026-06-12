@@ -3,14 +3,10 @@ import hashlib
 import asyncio
 import os
 
-# 1. منع Pyrogram من محاولة إدارة الحلقة تلقائياً (حل مشكلة Runtime Error)
-os.environ["PYROGRAM_SKIP_TELETHON_SYNC"] = "1"
-from pyrogram import Client
-
-# --- إعداد الصفحة ---
+# إعداد الصفحة
 st.set_page_config(page_title="VIP ACCESS", page_icon="👑")
 
-# --- المنطق البرمجي ---
+# المنطق البرمجي
 if 'authenticated' not in st.session_state: st.session_state.authenticated = False
 
 hwid = hashlib.md5(st.context.headers.get("User-Agent", "").encode()).hexdigest()[:10].upper()
@@ -33,9 +29,9 @@ else:
     msg = st.text_area("نص الرسالة")
     
     if st.button("🚀 بدء النشر"):
-        # إنشاء حلقة أحداث جديدة لكل عملية نشر
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        # 1. الاستيراد هنا داخل الدالة يحل مشكلة الـ Import Error
+        os.environ["PYROGRAM_SKIP_TELETHON_SYNC"] = "1"
+        from pyrogram import Client
         
         async def run_bot():
             async with Client("my_session", api_id=int(api_id), api_hash=api_hash) as app:
@@ -47,7 +43,10 @@ else:
                     except Exception as e:
                         st.error(f"خطأ في {group}: {e}")
         
+        # 2. تشغيل الـ Loop
         try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
             loop.run_until_complete(run_bot())
-        finally:
-            loop.close()
+        except Exception as e:
+            st.error(f"خطأ تقني: {e}")
